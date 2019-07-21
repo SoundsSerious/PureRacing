@@ -1,0 +1,65 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Jul 14 17:46:12 2019
+
+@author: Nico
+"""
+
+from matplotlib.pylab import *
+from numpy.linalg import  *
+
+#Geometry
+pivotToSimCG_Y = 0.68
+pivotToSimCG_Z = 0.1
+centerlineToActuator_X = 0.32
+pivotToTbar_Z = 0.51
+humanToPivotY = 0.35
+humanToPivotZ = -0.17
+
+Rl = array([centerlineToActuator_X,0,pivotToTbar_Z])
+Rr = array([-centerlineToActuator_X,0,pivotToTbar_Z])
+Rp = array([0,humanToPivotY,humanToPivotZ])
+Rg = array([0,pivotToSimCG_Y,pivotToSimCG_Z])
+
+#Mass 
+gravity = 9.81
+massSimulator = 40.32
+massPerson = 75.5
+
+I_Chassis = array([[23.40,-0.04,-0], # 1st row
+            [-0.04,5.78,-1.67], # 2nd row
+            [-0,-1.67,23.27]] # 3rd row
+                      )
+
+I_User = array([[25.44,0.14,-0.04], # 1st row
+            [0.14,9.44,6.41], # 2nd row
+            [-0.04,6.41,17.77]] # 3rd row
+                      )
+
+I=I_Chassis + I_User
+
+#Forces and Moments
+forceActuator = array([0,440.0,0])
+forceSimGravity = array([0,-gravity*massSimulator,0])
+forceUserGravity = array([0,-gravity*massPerson,0])
+
+momentActuator_L = cross(forceActuator,Rl)
+momentActuator_R = cross(forceActuator,Rr)
+momentSimGrav = cross(forceSimGravity,Rg)
+momentUserGrav = cross(forceUserGravity,Rp)
+
+momentTotal = momentActuator_L + momentActuator_R + momentSimGrav + momentUserGrav
+
+print('{:<30}|{}'.format('Actuator_L',momentActuator_L))
+print('{:<30}|{}'.format('Actuator_R',momentActuator_R))
+print('{:<30}|{}'.format('Sim',momentSimGrav))
+print('{:<30}|{}'.format('User',momentUserGrav))
+print('{:<30}|{}'.format('Total',momentTotal))
+
+#Solve
+dwdt = solve(I,momentTotal)
+
+print('{:<30}|{}'.format('dwdt',dwdt))
+
+
+
