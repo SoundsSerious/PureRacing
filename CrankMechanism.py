@@ -84,8 +84,8 @@ T1,T2 = meshgrid(theta_rad,theta_rad)
 BB = calculate_beta(T1,T2)
 GG = calculate_gamma(T1,T2)
 
-L1 = calculate_x_pos(theta1)
-L2 = calculate_x_pos(theta2)
+L1 = calculate_x_pos(T1)
+L2 = calculate_x_pos(T2)
 
 X1 = L1 - L1.min()
 X2 = L2 - L2.min()
