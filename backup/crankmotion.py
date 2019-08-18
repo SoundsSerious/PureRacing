@@ -21,11 +21,10 @@ class CrankConfig(Configuration):
         y2 = (self.l**2.0 + self.r**2.0*sin(theta)**2.0)**0.5
         return y1 + y2
 
-    def v(self,theta):
-        v1 = -self.r * sin(theta)
-        v2 = -(self.r**2.0 * sin(theta) * cos(theta)) / \
-                (self.l**2.0 + self.r**2.0*sin(theta)**2.0)**0.5
-        return v1+v2
+    def v(self,theta, omega):
+        alpha = self.alpha(theta)
+        v1 = -self.r * sin(theta+alpha) * omega / cos(alpha)
+        return v1
 
     def alpha(self, theta):
         dx_r = self.r * sin(theta)

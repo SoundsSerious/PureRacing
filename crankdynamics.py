@@ -12,20 +12,22 @@ from scipy.integrate import ode, odeint
 class CrankConfig(Configuration):
 
     r = 0.0445
-    l = 0.16#0.0762
-    Cf = 0.5
+    l = 0.0762
+    Cf = 0.05
     I = 0.1
+
+    x_offset = 0
+    axis_offset = 0.0
 
     def x(self,theta):
         y1 = self.r*cos(theta)
         y2 = (self.l**2.0 - self.r**2.0*sin(theta)**2.0)**0.5
-        return y1 + y2
+        return y1 + y2 - self.x_offset
 
-    def v(self,theta):
-        v1 = -self.r * sin(theta)
-        v2 = -(self.r**2.0 * sin(theta) * cos(theta)) / \
-                (self.l**2.0 - self.r**2.0*sin(theta)**2.0)**0.5
-        return v1+v2
+    def v(self,theta, omega):
+        alpha = self.alpha(theta)
+        v = -self.r * sin(theta+alpha) * omega / cos(alpha)
+        return v
 
     def alpha(self, theta):
         dx_r = self.r * sin(theta)
@@ -41,11 +43,11 @@ class CrankConfig(Configuration):
 
     @property
     def max_x(self):
-        return self.r + self.l
+        return self.r + self.l - self.x_offset
 
     @property
     def min_x(self):
-        return self.l - self.r
+        return self.l - self.r - self.x_offset
 
 
 crank = CrankConfig()
@@ -53,10 +55,11 @@ crank = CrankConfig()
 class CrankController(Configuration):
 
     stall_torque = 70.0
-    max_speed = 45 * 2. * pi / 60.
+    max_speed = 40 * 2. * pi / 60.
 
     torque_margin = 20.0
-    speed_limit = (stall_torque-torque_margin) * (max_speed) / stall_torque
+    speed_limit = (stall_torque-torque_margin) * (max_speed) /  stall_torque
+
 
     gain = 5.0
     Kp = 1.25
@@ -68,6 +71,8 @@ class CrankController(Configuration):
     dmd_max = pi
     dmd_min = -pi
 
+    last2error = 0.0
+    last_error = 0.0
     error = 0.0
     ep = 0.0
     ei = 0.0
@@ -78,29 +83,35 @@ class CrankController(Configuration):
     theta_current = 0
 
     last_update = 0.
-    update_frequency = 60. #hz
+    update_frequency = 500. #hz
     update_interval = (1.0 / update_frequency)
 
+    d_lowpass = 0.9
+    o_lowpass = 1.0
 
     def update(self,time,current_value, omega_value):
         dt = time - self.last_update
         if dt >= self.update_interval:
-            self.omega_current = omega_value
-            self.theta_current = current_value
+            self.omega_current = omega_value*self.o_lowpass + self.omega_current*(1.0-self.o_lowpass)
+            self.theta_current = current_value#*self.o_lowpass + self.theta_current*(1.0-self.o_lowpass)
 
-            last_error = self.error
+            self.last2error = self.last_error
+            self.last_error = self.error
             self.error = self.demanded - self.theta_current
 
             self.ei += self.error*self.Ki  * dt
-            self.ed = (self.error - last_error) / dt
+            self.ed = self.ed*(1.0-self.d_lowpass) + self.d_lowpass*(self.error - self.last_error) / dt
             self.ep = self.error
 
-            print time, self.ei, self.error
+            #if sign(self.ei) != sign(self.ep):
+            #    self.ei = 0.0#self.ei * 0.9
+
+            #print time, self.ei, self.error
 
             #Gain Dampening:
-            self.gain_dampening = 1.0#max(1.0, self.omega_current / self.speed_limit)
+            self.gain_dampening = max(1.0, self.omega_current / self.speed_limit)
 
-            self.u = self.gain*(self.ep*self.Kp +  self.ei +  self.ed * self.Kd) / self.gain_dampening
+            self.u = self.gain*(self.ep*self.Kp +  self.ei +  self.ed * self.Kd) #\\// self.gain_dampening
             self.last_update = time
 
     @property
@@ -126,23 +137,39 @@ class CrankController(Configuration):
         return min(max(self.u,-self.max_torque),self.max_torque)
 
     @property
+    def overspeed_torque(self):
+        return 0.0
+        if abs(self.omega_current) < self.max_speed:
+            return 0.0
+        else:
+            scalar_val =  self.stall_torque - self.omega_current * (self.stall_torque / self.max_speed)
+            vector_val = -1.*scalar_val * sign(self.omega_current)
+            return vector_val
+
+    @property
     def Ki(self):
         #return self._Ki
         if self.u < self.max_torque and self.u > -self.max_torque:
             return self._Ki
         return 0.0
 
+    @property
+    def speed_limit(self):
+        return (self.stall_torque-self.torque_margin) * (self.max_speed) / self.stall_torque
+
 class DisplacementController(Configuration):
 
-    gain = -25.0
+    gain = -35.0
     Kp = 1.5
     _Ki = 0.75
-    Kd = 0.2
+    Kd = -0.05
 
     _demanded = crank.max_x - 0.05
     dmd_max = crank.max_x
-    dmd_min = -crank.min_x
+    dmd_min = crank.min_x
 
+    last2error = 0.0
+    last_error = 0.0
     error = 0.0
     ep = 0.0
     ei = 0.0
@@ -151,22 +178,25 @@ class DisplacementController(Configuration):
     u = 0.0 #Output Value
 
     last_update = 0.
-    update_frequency = 30. #hz
+    update_frequency = 500. #hz
     update_interval = (1.0 / update_frequency)
 
-    u_lowpass = 0.1
+    u_lowpass = 1.0
 
     def update(self,time,current_value):
         dt = time - self.last_update
         if dt >= self.update_interval:
 
-            last_error = self.error
+            self.last2error = self.last_error
+            self.last_error = self.error
             self.error = self.demanded - current_value
 
             self.ei += self.error*self.Ki  * dt
-            self.ed = (self.error - last_error) / dt
+            self.ed = (self.error - self.last_error) / dt
             self.ep = self.error
 
+            #if sign(self.ei) != sign(self.ep):
+            #    self.ei = 0.0# self.ei * 0.9
             # print time, self.ei, self.error
 
             self.u = self.u * (1.-self.u_lowpass)  + \
@@ -298,33 +328,25 @@ if __name__ == '__main__':
     ax2.grid()
     show()
 
-    # figure(figsize=(12,6) )
-    #
-    # legend()
-    # grid()
-    # show()
+
+    theta = linspace(-pi,pi)
+    #f_v = vectorize(crank.v)
+    f_x = vectorize(crank.x)
+    f_a = vectorize(crank.alpha)
+    f_tqf=vectorize(crank.torqueQforce)
+
+    #v = f_v(theta)
+    x = f_x(theta)
+    a = f_a(theta)
+    t = f_tqf(theta)
 
 
-
-
-# theta = linspace(-pi,pi)
-# f_v = vectorize(crank.v)
-# f_x = vectorize(crank.x)
-# f_a = vectorize(crank.alpha)
-# f_tqf=vectorize(crank.torqueQforce)
-#
-# v = f_v(theta)
-# x = f_x(theta)
-# a = f_a(theta)
-# t = f_tqf(theta)
-#
-#
-# figure()
-# title('Mechanism Profile')
-# plot(theta,v,label='v')
-# plot(theta,x,label='x')
-# plot(theta,a/(pi),label='a')
-# plot(theta,t,label='tqf')
-# grid()
-# legend()
-# show()
+    figure()
+    title('Mechanism Profile')
+    #plot(theta,v,label='v')
+    plot(theta,x,label='x')
+    plot(theta,a/(pi),label='a')
+    plot(theta,t,label='Torque/Force')
+    grid()
+    legend()
+    show()
