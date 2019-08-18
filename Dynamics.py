@@ -445,12 +445,12 @@ if __name__ == '__main__':
 
     BOSCH_GAIN_X = -30.
     BOSCH_GAIN_T = 20.
-    bosch = PlatformDesign(name = 'Bosch Motor', stall_torque = 70.0, max_speed = 75 * 2. * pi / 60.,\
+    bosch = PlatformDesign(name = 'Bosch Motor Pitch', stall_torque = 70.0, max_speed = 75 * 2. * pi / 60.,\
                             T_GAIN = BOSCH_GAIN_T , X_GAIN = BOSCH_GAIN_X, Kd_t = 0.01 , Kd_x = 0.0)
     bosch.run_simulation( bosch.run_pitch_test )
     bosch.generate_plots()
 
-    bosch_roll = PlatformDesign(name = 'Bosch Motor', stall_torque = 70.0, max_speed = 75 * 2. * pi / 60.,\
+    bosch_roll = PlatformDesign(name = 'Bosch Motor Roll', stall_torque = 70.0, max_speed = 75 * 2. * pi / 60.,\
                             T_GAIN = BOSCH_GAIN_T , X_GAIN = BOSCH_GAIN_X, Kd_t = 0.01 , Kd_x = 0.0)
     bosch_roll.run_simulation( bosch_roll.run_roll_test )
     bosch_roll.generate_plots()
@@ -462,13 +462,13 @@ if __name__ == '__main__':
     #     bst.run_simulation( bst.run_pitch_test )
     #     bst.generate_plots()
 
-    boschs = PlatformDesign(name = 'Bosch Motor w/ Springs', include_springs = True,
+    boschs = PlatformDesign(name = 'Bosch Motor w/ Springs Pitch', include_springs = True,
                            stall_torque = 70.0, max_speed = 75 * 2. * pi / 60.,\
                            T_GAIN = BOSCH_GAIN_T , X_GAIN = BOSCH_GAIN_X, Kd_t = 0.0 , Kd_x = 0.00)
     boschs.run_simulation( boschs.run_pitch_test )
     boschs.generate_plots()
 
-    boschs_roll = PlatformDesign(name = 'Bosch Motor w/ Springs', include_springs = True,
+    boschs_roll = PlatformDesign(name = 'Bosch Motor w/ Springs Roll', include_springs = True,
                            stall_torque = 70.0, max_speed = 75 * 2. * pi / 60.,\
                            T_GAIN = BOSCH_GAIN_T , X_GAIN = BOSCH_GAIN_X, Kd_t = 0.0 , Kd_x = 0.00)
     boschs_roll.run_simulation( boschs_roll.run_roll_test )
