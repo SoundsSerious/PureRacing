@@ -37,7 +37,7 @@ ZD1430B_x = [StallTorque,0]
 ZD1430B_y = [0,NoLoadSpeed]
 
 
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(14,10))
 plt.xlabel('Torque Nm')
 plt.ylabel('RPM')
 plt.axis([0,80,0,80])
@@ -52,9 +52,13 @@ plt.axis([0,80,0,80])
 #            arrowprops=dict(facecolor='black', shrink=0.05),
 #            )
 
-ax.plot(ZD1633_y,ZD1633_x, 'gray', linestyle='--', marker ='', label = 'ZD1633')
-ax.plot(Bosch_y,Bosch_x, 'green', linestyle='-', marker ='', label = 'Bosch')
-ax.plot(ZD1430B_y,ZD1430B_x, 'black', linestyle=':', marker ='', label = 'ZD1430B')
+ax.plot(ZD1633_y,ZD1633_x, 'gray', linestyle='--', marker ='', label = 'ZD1633', lw=3)
+ax.plot(Bosch_y,Bosch_x, 'green', linestyle='-', marker ='', label = 'Bosch', lw=3)
+ax.plot(ZD1430B_y,ZD1430B_x, 'black', linestyle=':', marker ='', label = 'ZD1430B', lw=3)
 ax.plot([30],[10],'om', label = 'Requirement Point')
+ax.plot([30],[5],'ok', label = 'Requirement Point (Springs)')
 plt.legend()
+plt.grid()
+plt.title('Motor Requirements')
 plt.show()
+fig.savefig('MotorRequirementsPlot.png')
